@@ -26,8 +26,8 @@ const KEY_BUFFERED = 229;
 @Directive({
   selector: '[mention], [mentionConfig]',
   host: {
-    '(keydown)': 'keyHandler($event)',
-    '(input)': 'inputHandler($event)',
+    '(keydown)': 'keyDownHandler($event)',
+    '(keypress)': 'keyPressHandler($event)',
     '(blur)': 'blurHandler($event)',
     'autocomplete': 'off'
   }
@@ -78,7 +78,6 @@ export class MentionDirective implements OnChanges {
   ) {}
 
   ngOnChanges(changes: SimpleChanges) {
-    // console.log('config change', changes);
     if (changes['mention'] || changes['mentionConfig']) {
       this.updateConfig();
     }
@@ -153,41 +152,20 @@ export class MentionDirective implements OnChanges {
   inputHandler(event: any, nativeElement: HTMLInputElement = this._element.nativeElement) {
     if (this.lastKeyCode === KEY_BUFFERED && event.data) {
       let keyCode = event.data.charCodeAt(0);
-      this.keyHandler({ keyCode, inputEvent: true }, nativeElement);
+      this.keyDownHandler({ keyCode, inputEvent: true }, nativeElement);
     }
   }
 
   // @param nativeElement is the alternative text element in an iframe scenario
-  keyHandler(event: any, nativeElement: HTMLInputElement = this._element.nativeElement) {
+  public keyPressHandler(event: any, nativeElement: HTMLInputElement = this._element.nativeElement) {
     this.lastKeyCode = event.keyCode;
 
     if (event.isComposing || event.keyCode === KEY_BUFFERED) {
       return;
     }
 
-    let val: string = getValue(nativeElement);
     let pos = getCaretPosition(nativeElement, this.iframe);
-    let charPressed = event.key;
-    if (!charPressed) {
-      let charCode = event.which || event.keyCode;
-      if (!event.shiftKey && (charCode >= 65 && charCode <= 90)) {
-        charPressed = String.fromCharCode(charCode + 32);
-      }
-      // else if (event.shiftKey && charCode === KEY_2) {
-      //   charPressed = this.config.triggerChar;
-      // }
-      else {
-        // TODO (dmacfarlane) fix this for non-alpha keys
-        // http://stackoverflow.com/questions/2220196/how-to-decode-character-pressed-from-jquerys-keydowns-event-handler?lq=1
-        charPressed = String.fromCharCode(event.which || event.keyCode);
-      }
-    }
-    if (event.keyCode == KEY_ENTER && event.wasClick && pos < this.startPos) {
-      // put caret back in position prior to contenteditable menu click
-      pos = this.startNode.length;
-      setCaretPosition(this.startNode, pos, this.iframe);
-    }
-    //console.log("keyHandler", this.startPos, pos, val, charPressed, event);
+    let charPressed = this.extractCharPressed(event, pos);
 
     let config = this.triggerChars[charPressed];
     if (config) {
@@ -199,7 +177,19 @@ export class MentionDirective implements OnChanges {
       this.showSearchList(nativeElement);
       this.updateSearchList();
     }
-    else if (this.startPos >= 0 && this.searching) {
+  }
+
+  public keyDownHandler(event: any, nativeElement: HTMLInputElement = this._element.nativeElement) {
+    let val: string = getValue(nativeElement);
+    let pos = getCaretPosition(nativeElement, this.iframe);
+    let charPressed = this.extractCharPressed(event, pos);
+
+    if (event.keyCode == KEY_ENTER && event.wasClick && pos < this.startPos) {
+      // put caret back in position prior to contenteditable menu click
+      pos = this.startNode.length;
+      setCaretPosition(this.startNode, pos, this.iframe);
+    }
+    if (this.startPos >= 0 && this.searching) {
       if (pos <= this.startPos) {
         this.searchList.hidden = true;
       }
@@ -316,7 +306,7 @@ export class MentionDirective implements OnChanges {
       componentRef.instance['itemClick'].subscribe(() => {
         nativeElement.focus();
         let fakeKeydown = { keyCode: KEY_ENTER, wasClick: true };
-        this.keyHandler(fakeKeydown, nativeElement);
+        this.keyDownHandler(fakeKeydown, nativeElement);
       });
     }
     this.searchList.labelKey = this.activeConfig.labelKey;
@@ -325,5 +315,35 @@ export class MentionDirective implements OnChanges {
     this.searchList.activeIndex = 0;
     this.searchList.position(nativeElement, this.iframe);
     window.setTimeout(() => this.searchList.reset());
+  }
+
+  private extractCharPressed(event: any, pos: any): string {
+    let charPressed = event.key;
+
+    if (!charPressed) {
+      let charCode = event.which || event.keyCode;
+      if (!event.shiftKey && (charCode >= 65 && charCode <= 90)) {
+        charPressed = String.fromCharCode(charCode + 32);
+      }
+      else if (event.shiftKey && charCode === 2) {
+        charPressed = this.DEFAULT_CONFIG.triggerChar;
+      }
+      else {
+        // TODO (dmacfarlane) fix this for non-alpha keys
+        // http://stackoverflow.com/questions/2220196/how-to-decode-character-pressed-from-jquerys-keydowns-event-handler?lq=1
+        charPressed = String.fromCharCode(event.which || event.keyCode);
+      }
+    }
+    if (event.keyCode === KEY_ENTER && event.wasClick && pos < this.startPos) {
+      // put caret back in position prior to contenteditable menu click
+      pos = this.startNode.length;
+      setCaretPosition(this.startNode, pos, this.iframe);
+    }
+    // Note: FIX for Edge (Windows - latest 44.18362.387.0) - does match @ as q+alt+ctrl
+    if (charPressed === 'q' && event.altKey && event.ctrlKey) {
+      charPressed = "@";
+    }
+
+    return charPressed;
   }
 }
