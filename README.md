@@ -7,6 +7,24 @@ Simple Angular mentions inspired by [Ment.io](https://github.com/jeff-collins/me
 Provides auto-complete suggestions for @mentions in text input fields, text areas,
 and content editable fields. Not fully browser tested and comes without warranty!
 
+---
+
+## INFO
+
+This version is supposed to function as npm package directly from github.
+Therefore the folder tool was prebuild for this use.
+
+### Steps To reproduce
+
+1) run ```ng build```
+2) remove all content **except** ```dist/``` folder
+3) move all content from ```dist/``` to root ```/```
+4) remove ```dist/```
+
+---
+
+### Install Demo
+
 To install and start the demo application:
 
     git clone https://github.com/dmacfarlane/angular-mentions.git
@@ -19,6 +37,12 @@ To install and start the demo application:
 Add the package as a dependency to your project using:
 
     npm install angular-mentions
+
+Add the CSS to your index.html:
+
+```html
+<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+```
 
 Add the module to your app.module imports:
 
@@ -58,7 +82,7 @@ The following optional configuration items can be used.
 | dropUp        | false    | Show the menu above the cursor instead of below. |
 | maxItems      | ∞        | Limit the number of items shown in the text. The default is no limit. |
 | mentionSelect |          | An optional function to format the selected item before inserting the text. |
-| allowSpace    | false    | An optional parameter to allow spaces while mentioning. |
+| allowSpace    | false    | An optional paremeter which decides whether to allow space while mentioning or not |
 
 For Example: 
 
